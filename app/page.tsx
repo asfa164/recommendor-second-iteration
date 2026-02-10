@@ -447,7 +447,7 @@ function FormEditor({
                   width: "100%",
                   padding: 6,
                   borderRadius: 8,
-                  border: "1px solid "#ddd",
+                  border: "1px solid #ddd",
                   fontFamily: "inherit",
                   fontSize: 13,
                 }}
@@ -543,7 +543,7 @@ function UserVariablesEditor({
     const next: Record<string, string> = { ...value };
     const oldKey = entries[i]?.[0];
 
-    // Remove the old key (even if empty)
+    // Remove old key (even if empty)
     if (oldKey !== undefined && oldKey !== newKey) {
       delete next[oldKey];
     }
@@ -570,7 +570,6 @@ function UserVariablesEditor({
     let index = existingKeys.size + 1;
     let newKey = `key${index}`;
 
-    // ensure uniqueness
     while (existingKeys.has(newKey)) {
       index += 1;
       newKey = `key${index}`;
