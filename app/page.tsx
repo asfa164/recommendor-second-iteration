@@ -20,6 +20,7 @@ type SubObjective = {
 type CompositeObjective = {
   name?: string;
   description?: string;
+  domain?: string; // NEW: domain field (optional)
   persona: string;
   userVariables?: Record<string, string>;
   subObjectives: SubObjective[];
@@ -30,6 +31,7 @@ const defaultComposite: CompositeObjective = {
   name: "Telecom Support – Vague Extra Charge Question",
   description:
     "Very rough, underspecified objective: customer has noticed an extra charge and asks about it.",
+  domain: "telecom_billing", // NEW: example domain
   persona: "Postpaid telecom customer in Ireland",
   userVariables: {
     account_type: "postpaid",
@@ -60,17 +62,29 @@ const emptySubObjective = (): SubObjective => ({
   },
 });
 
-// For pretty text rendering of the model result
+// For pretty text rendering of the model result (v1 shape)
 type ObjectiveResult = {
   originalDescription?: string;
   primarySuggestion?: string;
   alternativeSuggestion?: string;
 };
 
+// For your current Bedrock output (v2 shape)
+type SubObjectiveResult = {
+  index?: number;
+  currentDefiningObjective?: string;
+  recommendation?: {
+    reason?: string;
+    suggestedDefiningObjective?: string;
+    alternativeDefiningObjective?: string;
+  };
+};
+
 type ModelResult = {
   error?: string;
-  objectives?: ObjectiveResult[];
+  objectives?: ObjectiveResult[]; // v1
   notes?: string;
+  subObjectives?: SubObjectiveResult[]; // v2 (your current JSON)
   [key: string]: any;
 };
 
@@ -274,6 +288,7 @@ export default function Page() {
 {`{
   "name": "string (optional)",
   "description": "string (optional)",
+  "domain": "string (optional)",
   "persona": "string (required)",
   "userVariables": { "key": "value" },
   "subObjectives": [ /* see sub-objective schema below */ ]
@@ -345,7 +360,7 @@ export default function Page() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 999,
-                  border: "1px solid #ccc",
+                  border: "1px solid "#ccc",
                   background: "#fafafa",
                   cursor: "pointer",
                   fontSize: 13,
@@ -483,9 +498,16 @@ function TextResultView({ result }: { result: unknown }) {
     );
   }
 
-  const objectives = Array.isArray(r.objectives) ? r.objectives : [];
+  // v1 format: { objectives: [...] }
+  const v1Objectives = Array.isArray(r.objectives) ? r.objectives : [];
 
-  if (!objectives.length && !r.notes) {
+  // v2 format: { subObjectives: [ { index, currentDefiningObjective, recommendation: {...} } ] }
+  const v2SubObjectives = Array.isArray(r.subObjectives) ? r.subObjectives : [];
+
+  const hasV1 = v1Objectives.length > 0;
+  const hasV2 = v2SubObjectives.length > 0;
+
+  if (!hasV1 && !hasV2 && !r.notes) {
     return (
       <div>
         <p style={{ color: "#666" }}>
@@ -498,45 +520,102 @@ function TextResultView({ result }: { result: unknown }) {
 
   return (
     <div style={{ display: "grid", gap: 10 }}>
-      {objectives.map((obj, idx) => (
-        <div
-          key={idx}
-          style={{
-            padding: 8,
-            borderRadius: 8,
-            background: "#fff",
-            border: "1px solid #e3e3e3",
-          }}
-        >
+      {/* v1 rendering */}
+      {hasV1 &&
+        v1Objectives.map((obj, idx) => (
           <div
+            key={`v1-${idx}`}
             style={{
-              fontSize: 12,
-              fontWeight: 600,
-              marginBottom: 4,
-              color: "#333",
+              padding: 8,
+              borderRadius: 8,
+              background: "#fff",
+              border: "1px solid #e3e3e3",
             }}
           >
-            Objective {idx + 1}
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                marginBottom: 4,
+                color: "#333",
+              }}
+            >
+              Objective {idx + 1}
+            </div>
+            {obj.originalDescription && (
+              <p style={{ margin: 0, fontSize: 12, color: "#555" }}>
+                <strong>Original:</strong> {obj.originalDescription}
+              </p>
+            )}
+            {obj.primarySuggestion && (
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#111" }}>
+                <strong>Primary suggestion:</strong>{" "}
+                {obj.primarySuggestion}
+              </p>
+            )}
+            {obj.alternativeSuggestion && (
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#333" }}>
+                <strong>Alternative suggestion:</strong>{" "}
+                {obj.alternativeSuggestion}
+              </p>
+            )}
           </div>
-          {obj.originalDescription && (
-            <p style={{ margin: 0, fontSize: 12, color: "#555" }}>
-              <strong>Original:</strong> {obj.originalDescription}
-            </p>
-          )}
-          {obj.primarySuggestion && (
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#111" }}>
-              <strong>Primary suggestion:</strong>{" "}
-              {obj.primarySuggestion}
-            </p>
-          )}
-          {obj.alternativeSuggestion && (
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#333" }}>
-              <strong>Alternative suggestion:</strong>{" "}
-              {obj.alternativeSuggestion}
-            </p>
-          )}
-        </div>
-      ))}
+        ))}
+
+      {/* v2 rendering – your current JSON shape */}
+      {hasV2 &&
+        v2SubObjectives.map((sub, idx) => {
+          const rec = sub.recommendation || {};
+          return (
+            <div
+              key={`v2-${idx}`}
+              style={{
+                padding: 8,
+                borderRadius: 8,
+                background: "#fff",
+                border: "1px solid #e3e3e3",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  marginBottom: 4,
+                  color: "#333",
+                }}
+              >
+                Sub-objective {sub.index ?? idx}
+              </div>
+
+              {sub.currentDefiningObjective && (
+                <p style={{ margin: 0, fontSize: 12, color: "#555" }}>
+                  <strong>Current defining objective:</strong>{" "}
+                  {sub.currentDefiningObjective}
+                </p>
+              )}
+
+              {rec.suggestedDefiningObjective && (
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#111" }}>
+                  <strong>Suggested defining objective:</strong>{" "}
+                  {rec.suggestedDefiningObjective}
+                </p>
+              )}
+
+              {rec.alternativeDefiningObjective && (
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#333" }}>
+                  <strong>Alternative defining objective:</strong>{" "}
+                  {rec.alternativeDefiningObjective}
+                </p>
+              )}
+
+              {rec.reason && (
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#555" }}>
+                  <strong>Reasoning:</strong> {rec.reason}
+                </p>
+              )}
+            </div>
+          );
+        })}
 
       {r.notes && (
         <div
@@ -617,6 +696,21 @@ function FormEditor({
         <input
           value={value.description ?? ""}
           onChange={(e) => set("description", e.target.value)}
+          style={{
+            width: "100%",
+            padding: 6,
+            borderRadius: 8,
+            border: "1px solid #ddd",
+          }}
+        />
+      </label>
+
+      <label>
+        <span style={{ fontSize: 13 }}>Domain (optional)</span>
+        <input
+          value={value.domain ?? ""}
+          onChange={(e) => set("domain", e.target.value)}
+          placeholder="e.g. telecom_billing, banking, travel"
           style={{
             width: "100%",
             padding: 6,
