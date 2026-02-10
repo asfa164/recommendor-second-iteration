@@ -33,7 +33,7 @@ const defaultComposite: CompositeObjective = {
   userVariables: {
     account_type: "postpaid",
     billing_cycle: "monthly",
-    currency: "EUR"
+    currency: "EUR",
   },
   subObjectives: [
     {
@@ -43,10 +43,10 @@ const defaultComposite: CompositeObjective = {
       maxTurnsForObjective: 8,
       turnMatching: {
         scope: "any",
-        evaluationStrategy: "first_match"
-      }
-    }
-  ]
+        evaluationStrategy: "first_match",
+      },
+    },
+  ],
 };
 
 const emptySubObjective = (): SubObjective => ({
@@ -55,20 +55,20 @@ const emptySubObjective = (): SubObjective => ({
   maxTurnsForObjective: 12,
   turnMatching: {
     scope: "any",
-    evaluationStrategy: "first_match"
-  }
+    evaluationStrategy: "first_match",
+  },
 });
 
 export default function Page() {
   const [mode, setMode] = useState<"json" | "form">("form");
 
-
   // Source-of-truth state for form mode
-  const [formState, setFormState] = useState<CompositeObjective>(defaultComposite);
+  const [formState, setFormState] =
+    useState<CompositeObjective>(defaultComposite);
 
   // JSON textarea state
-  const [jsonText, setJsonText] = useState<string>(
-    () => JSON.stringify(defaultComposite, null, 2)
+  const [jsonText, setJsonText] = useState<string>(() =>
+    JSON.stringify(defaultComposite, null, 2)
   );
 
   const [result, setResult] = useState<unknown>(null);
@@ -96,7 +96,7 @@ export default function Page() {
       const res = await fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadToSubmit)
+        body: JSON.stringify(payloadToSubmit),
       });
 
       const data = await res.json();
@@ -133,7 +133,7 @@ export default function Page() {
       style={{
         minHeight: "100vh",
         padding: "32px 16px",
-        background: "#f5f5f7"
+        background: "#f5f5f7",
       }}
     >
       <div
@@ -143,7 +143,7 @@ export default function Page() {
           background: "white",
           borderRadius: 16,
           padding: 24,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.06)"
+          boxShadow: "0 8px 24px rgba(0,0,0,0.06)",
         }}
       >
         <header style={{ marginBottom: 24 }}>
@@ -164,7 +164,7 @@ export default function Page() {
             borderRadius: 999,
             border: "1px solid #ddd",
             overflow: "hidden",
-            marginBottom: 20
+            marginBottom: 20,
           }}
         >
           <button
@@ -176,7 +176,7 @@ export default function Page() {
               background: mode === "json" ? "#111" : "transparent",
               color: mode === "json" ? "#fff" : "#333",
               cursor: mode === "json" ? "default" : "pointer",
-              fontSize: 14
+              fontSize: 14,
             }}
           >
             JSON
@@ -190,18 +190,30 @@ export default function Page() {
               background: mode === "form" ? "#111" : "transparent",
               color: mode === "form" ? "#fff" : "#333",
               cursor: mode === "form" ? "default" : "pointer",
-              fontSize: 14
+              fontSize: 14,
             }}
           >
             Form
           </button>
         </div>
 
-        <section style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 20 }}>
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "3fr 2fr",
+            gap: 20,
+          }}
+        >
           <div>
             {mode === "json" ? (
               <div>
-                <label style={{ fontWeight: 600, display: "block", marginBottom: 6 }}>
+                <label
+                  style={{
+                    fontWeight: 600,
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
                   CompositeObjective JSON
                 </label>
                 <textarea
@@ -215,12 +227,18 @@ export default function Page() {
                     padding: 12,
                     borderRadius: 10,
                     border: "1px solid #ddd",
-                    resize: "vertical"
+                    resize: "vertical",
                   }}
                 />
-                <p style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
-                  Paste or edit the full CompositeObjective JSON. Optional fields
-                  can be omitted; defaults are applied on the server.
+                <p
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    color: "#666",
+                  }}
+                >
+                  Paste or edit the full CompositeObjective JSON. Optional
+                  fields can be omitted; defaults are applied on the server.
                 </p>
               </div>
             ) : (
@@ -239,7 +257,7 @@ export default function Page() {
                   color: "#fff",
                   cursor: loading ? "wait" : "pointer",
                   fontSize: 14,
-                  fontWeight: 500
+                  fontWeight: 500,
                 }}
               >
                 {loading ? "Generating..." : "Generate Recommendation"}
@@ -256,7 +274,7 @@ export default function Page() {
                   border: "1px solid #ccc",
                   background: "#fafafa",
                   cursor: "pointer",
-                  fontSize: 13
+                  fontSize: 13,
                 }}
               >
                 Log payload to console
@@ -264,7 +282,13 @@ export default function Page() {
             </div>
 
             {error && (
-              <p style={{ color: "crimson", marginTop: 10, fontSize: 13 }}>
+              <p
+                style={{
+                  color: "crimson",
+                  marginTop: 10,
+                  fontSize: 13,
+                }}
+              >
                 {error}
               </p>
             )}
@@ -282,7 +306,7 @@ export default function Page() {
                 borderRadius: 10,
                 border: "1px solid #ddd",
                 background: "#fafafa",
-                overflow: "auto"
+                overflow: "auto",
               }}
             >
               {result ? JSON.stringify(result, null, 2) : "No result yet."}
@@ -296,7 +320,7 @@ export default function Page() {
 
 function FormEditor({
   value,
-  onChange
+  onChange,
 }: {
   value: CompositeObjective;
   onChange: (v: CompositeObjective) => void;
@@ -333,7 +357,12 @@ function FormEditor({
         <input
           value={value.name ?? ""}
           onChange={(e) => set("name", e.target.value)}
-          style={{ width: "100%", padding: 6, borderRadius: 8, border: "1px solid #ddd" }}
+          style={{
+            width: "100%",
+            padding: 6,
+            borderRadius: 8,
+            border: "1px solid #ddd",
+          }}
         />
       </label>
 
@@ -342,7 +371,12 @@ function FormEditor({
         <input
           value={value.description ?? ""}
           onChange={(e) => set("description", e.target.value)}
-          style={{ width: "100%", padding: 6, borderRadius: 8, border: "1px solid #ddd" }}
+          style={{
+            width: "100%",
+            padding: 6,
+            borderRadius: 8,
+            border: "1px solid #ddd",
+          }}
         />
       </label>
 
@@ -351,7 +385,12 @@ function FormEditor({
         <input
           value={value.persona}
           onChange={(e) => set("persona", e.target.value)}
-          style={{ width: "100%", padding: 6, borderRadius: 8, border: "1px solid #ddd" }}
+          style={{
+            width: "100%",
+            padding: 6,
+            borderRadius: 8,
+            border: "1px solid #ddd",
+          }}
         />
       </label>
 
@@ -369,7 +408,7 @@ function FormEditor({
               border: "1px solid #e3e3e3",
               borderRadius: 10,
               padding: 10,
-              background: "#fcfcfc"
+              background: "#fcfcfc",
             }}
           >
             <div
@@ -377,7 +416,7 @@ function FormEditor({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 6
+                marginBottom: 6,
               }}
             >
               <strong style={{ fontSize: 13 }}>Sub-objective {i + 1}</strong>
@@ -389,7 +428,7 @@ function FormEditor({
                   background: "transparent",
                   color: "#c00",
                   fontSize: 12,
-                  cursor: "pointer"
+                  cursor: "pointer",
                 }}
               >
                 Remove
@@ -408,14 +447,16 @@ function FormEditor({
                   width: "100%",
                   padding: 6,
                   borderRadius: 8,
-                  border: "1px solid #ddd",
+                  border: "1px solid "#ddd",
                   fontFamily: "inherit",
-                  fontSize: 13
+                  fontSize: 13,
                 }}
               />
             </label>
 
-            <label style={{ display: "block", marginTop: 6, fontSize: 13 }}>
+            <label
+              style={{ display: "block", marginTop: 6, fontSize: 13 }}
+            >
               <input
                 type="checkbox"
                 checked={!!sub.isBlocking}
@@ -438,7 +479,7 @@ function FormEditor({
                   width: "100%",
                   padding: 6,
                   borderRadius: 8,
-                  border: "1px solid #ddd"
+                  border: "1px solid #ddd",
                 }}
               />
             </label>
@@ -450,14 +491,14 @@ function FormEditor({
                 value={sub.maxTurnsForObjective ?? 12}
                 onChange={(e) =>
                   updateSub(i, {
-                    maxTurnsForObjective: Number(e.target.value)
+                    maxTurnsForObjective: Number(e.target.value),
                   })
                 }
                 style={{
                   width: 140,
                   padding: 6,
                   borderRadius: 8,
-                  border: "1px solid #ddd"
+                  border: "1px solid #ddd",
                 }}
               />
             </label>
@@ -480,7 +521,7 @@ function FormEditor({
           border: "1px dashed #bbb",
           background: "#fafafa",
           cursor: "pointer",
-          fontSize: 13
+          fontSize: 13,
         }}
       >
         + Add sub-objective
@@ -491,32 +532,54 @@ function FormEditor({
 
 function UserVariablesEditor({
   value,
-  onChange
+  onChange,
 }: {
   value: Record<string, string>;
   onChange: (v: Record<string, string>) => void;
 }) {
   const entries = Object.entries(value);
 
-  function setEntry(i: number, k: string, v: string) {
+  function setEntry(i: number, newKey: string, newValue: string) {
     const next: Record<string, string> = { ...value };
     const oldKey = entries[i]?.[0];
-    if (oldKey && oldKey !== k) delete next[oldKey];
-    if (k.trim()) {
-      next[k] = v;
+
+    // Remove the old key (even if empty)
+    if (oldKey !== undefined && oldKey !== newKey) {
+      delete next[oldKey];
     }
+
+    // Only set new key if it has text
+    if (newKey.trim().length > 0) {
+      next[newKey] = newValue;
+    }
+
     onChange(next);
   }
 
   function remove(i: number) {
     const next: Record<string, string> = { ...value };
-    const k = entries[i]?.[0];
-    if (k) delete next[k];
+    const key = entries[i]?.[0];
+    if (key !== undefined) {
+      delete next[key];
+    }
     onChange(next);
   }
 
   function add() {
-    onChange({ ...value, "": "" });
+    const existingKeys = new Set(Object.keys(value));
+    let index = existingKeys.size + 1;
+    let newKey = `key${index}`;
+
+    // ensure uniqueness
+    while (existingKeys.has(newKey)) {
+      index += 1;
+      newKey = `key${index}`;
+    }
+
+    onChange({
+      ...value,
+      [newKey]: "",
+    });
   }
 
   return (
@@ -525,17 +588,18 @@ function UserVariablesEditor({
         border: "1px solid #eee",
         borderRadius: 10,
         padding: 10,
-        marginTop: 4
+        marginTop: 4,
       }}
     >
       <strong style={{ fontSize: 13 }}>User Variables (optional)</strong>
+
       {entries.map(([k, v], i) => (
         <div
-          key={i}
+          key={k || i}
           style={{
             display: "flex",
             gap: 6,
-            marginTop: 8
+            marginTop: 8,
           }}
         >
           <input
@@ -546,7 +610,7 @@ function UserVariablesEditor({
               padding: 5,
               borderRadius: 8,
               border: "1px solid #ddd",
-              minWidth: 100
+              minWidth: 100,
             }}
           />
           <input
@@ -557,7 +621,7 @@ function UserVariablesEditor({
               padding: 5,
               borderRadius: 8,
               border: "1px solid #ddd",
-              flex: 1
+              flex: 1,
             }}
           />
           <button
@@ -568,13 +632,14 @@ function UserVariablesEditor({
               background: "transparent",
               color: "#c00",
               cursor: "pointer",
-              fontSize: 12
+              fontSize: 12,
             }}
           >
             ✕
           </button>
         </div>
       ))}
+
       <div style={{ marginTop: 8 }}>
         <button
           type="button"
@@ -585,7 +650,7 @@ function UserVariablesEditor({
             border: "1px dashed #bbb",
             background: "#fafafa",
             cursor: "pointer",
-            fontSize: 12
+            fontSize: 12,
           }}
         >
           + Add variable
@@ -597,14 +662,14 @@ function UserVariablesEditor({
 
 function TurnMatchingEditor({
   value,
-  onChange
+  onChange,
 }: {
   value?: TurnMatching;
   onChange: (v?: TurnMatching) => void;
 }) {
   const tm: TurnMatching = value ?? {
     scope: "any",
-    evaluationStrategy: "first_match"
+    evaluationStrategy: "first_match",
   };
 
   return (
@@ -613,24 +678,34 @@ function TurnMatchingEditor({
         border: "1px dashed #ddd",
         borderRadius: 8,
         padding: 8,
-        marginTop: 8
+        marginTop: 8,
       }}
     >
       <strong style={{ fontSize: 13 }}>Turn Matching (optional)</strong>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          marginTop: 6,
+          flexWrap: "wrap",
+        }}
+      >
         <label style={{ fontSize: 13 }}>
           scope
           <select
             value={tm.scope ?? "any"}
             onChange={(e) =>
-              onChange({ ...tm, scope: e.target.value as TurnMatching["scope"] })
+              onChange({
+                ...tm,
+                scope: e.target.value as TurnMatching["scope"],
+              })
             }
             style={{
               marginLeft: 6,
               padding: 4,
               borderRadius: 6,
-              border: "1px solid #ddd"
+              border: "1px solid #ddd",
             }}
           >
             <option value="any">any</option>
@@ -646,14 +721,15 @@ function TurnMatchingEditor({
             onChange={(e) =>
               onChange({
                 ...tm,
-                evaluationStrategy: e.target.value as TurnMatching["evaluationStrategy"]
+                evaluationStrategy:
+                  e.target.value as TurnMatching["evaluationStrategy"],
               })
             }
             style={{
               marginLeft: 6,
               padding: 4,
               borderRadius: 6,
-              border: "1px solid #ddd"
+              border: "1px solid #ddd",
             }}
           >
             <option value="first_match">first_match</option>
@@ -671,7 +747,7 @@ function TurnMatchingEditor({
               onChange={(e) =>
                 onChange({
                   ...tm,
-                  recentTurnCount: Number(e.target.value)
+                  recentTurnCount: Number(e.target.value),
                 })
               }
               style={{
@@ -679,7 +755,7 @@ function TurnMatchingEditor({
                 padding: 4,
                 borderRadius: 6,
                 border: "1px solid #ddd",
-                width: 80
+                width: 80,
               }}
             />
           </label>
@@ -696,7 +772,7 @@ function TurnMatchingEditor({
             border: "1px solid #ddd",
             background: "#fafafa",
             cursor: "pointer",
-            fontSize: 12
+            fontSize: 12,
           }}
         >
           Remove turnMatching
