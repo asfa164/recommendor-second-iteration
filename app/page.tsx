@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type TurnMatching = {
   scope?: "any" | "recent" | "current";
@@ -237,9 +237,65 @@ export default function Page() {
                     color: "#666",
                   }}
                 >
-                  Paste or edit the full CompositeObjective JSON. Optional
-                  fields can be omitted; defaults are applied on the server.
+                  Top-level shape:
                 </p>
+                <pre
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                    padding: 8,
+                    borderRadius: 8,
+                    border: "1px solid #eee",
+                    background: "#fafafa",
+                    overflowX: "auto",
+                    marginTop: 4,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+{`{
+  "name": "string (optional)",
+  "description": "string (optional)",
+  "persona": "string (required)",
+  "userVariables": { "key": "value" },
+  "subObjectives": [ /* see sub-objective schema below */ ]
+}`}
+                </pre>
+                <p
+                  style={{
+                    marginTop: 6,
+                    fontSize: 12,
+                    color: "#666",
+                  }}
+                >
+                  Each item in <code>subObjectives</code> should follow:
+                </p>
+                <pre
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                    padding: 8,
+                    borderRadius: 8,
+                    border: "1px solid #eee",
+                    background: "#fafafa",
+                    overflowX: "auto",
+                    marginTop: 4,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+{`{
+  "description": "string",           // Required: What should be achieved
+  "isBlocking": boolean,             // Optional: If true, failure stops the test (default: false)
+  "instructions": "string",          // Optional: Special instructions for evaluation
+  "maxTurnsForObjective": number,    // Optional: Maximum turns for a sub objective (default: 12) 
+  "turnMatching": {                  // Optional: Configure flexible turn-based objective matching
+    "scope": "any | recent | current",              // Default: "any"
+    "evaluationStrategy": "first_match | best_match | latest_match",  // Default: "first_match"
+    "recentTurnCount": number        // Required when scope='recent'
+  }
+}`}
+                </pre>
               </div>
             ) : (
               <FormEditor value={formState} onChange={setFormState} />
@@ -307,6 +363,8 @@ export default function Page() {
                 border: "1px solid #ddd",
                 background: "#fafafa",
                 overflow: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
               }}
             >
               {result ? JSON.stringify(result, null, 2) : "No result yet."}
@@ -530,6 +588,13 @@ function FormEditor({
   );
 }
 
+/**
+ * UserVariablesEditor – UX-friendly version
+ * - Internally uses rows with IDs so deleting doesn't fight typing
+ * - Only syncs non-empty keys back to parent Record<string,string>
+ */
+type UserVarRow = { id: number; key: string; value: string };
+
 function UserVariablesEditor({
   value,
   onChange,
@@ -537,48 +602,65 @@ function UserVariablesEditor({
   value: Record<string, string>;
   onChange: (v: Record<string, string>) => void;
 }) {
-  const entries = Object.entries(value);
+  const [rows, setRows] = useState<UserVarRow[]>([]);
 
-  function setEntry(i: number, newKey: string, newValue: string) {
-    const next: Record<string, string> = { ...value };
-    const oldKey = entries[i]?.[0];
-
-    // Remove old key (even if empty)
-    if (oldKey !== undefined && oldKey !== newKey) {
-      delete next[oldKey];
+  // Initialise / sync rows from parent value
+  useEffect(() => {
+    const entries = Object.entries(value);
+    if (entries.length === 0) {
+      setRows([]);
+      return;
     }
+    const nextRows: UserVarRow[] = entries.map(([k, v], idx) => ({
+      id: idx + 1,
+      key: k,
+      value: v,
+    }));
+    setRows(nextRows);
+  }, [value]);
 
-    // Only set new key if it has text
-    if (newKey.trim().length > 0) {
-      next[newKey] = newValue;
+  function syncToParent(nextRows: UserVarRow[]) {
+    const record: Record<string, string> = {};
+    for (const r of nextRows) {
+      if (r.key.trim()) {
+        record[r.key.trim()] = r.value;
+      }
     }
-
-    onChange(next);
+    onChange(record);
   }
 
-  function remove(i: number) {
-    const next: Record<string, string> = { ...value };
-    const key = entries[i]?.[0];
-    if (key !== undefined) {
-      delete next[key];
-    }
-    onChange(next);
+  function handleKeyChange(id: number, newKey: string) {
+    const nextRows = rows.map((r) =>
+      r.id === id ? { ...r, key: newKey } : r
+    );
+    setRows(nextRows);
+    syncToParent(nextRows);
   }
 
-  function add() {
-    const existingKeys = new Set(Object.keys(value));
-    let index = existingKeys.size + 1;
-    let newKey = `key${index}`;
+  function handleValueChange(id: number, newValue: string) {
+    const nextRows = rows.map((r) =>
+      r.id === id ? { ...r, value: newValue } : r
+    );
+    setRows(nextRows);
+    syncToParent(nextRows);
+  }
 
-    while (existingKeys.has(newKey)) {
-      index += 1;
-      newKey = `key${index}`;
-    }
+  function addRow() {
+    const maxId = rows.reduce((m, r) => Math.max(m, r.id), 0);
+    const newRow: UserVarRow = {
+      id: maxId + 1,
+      key: "",
+      value: "",
+    };
+    const nextRows = [...rows, newRow];
+    setRows(nextRows);
+    // No immediate sync – empty key means nothing to send yet
+  }
 
-    onChange({
-      ...value,
-      [newKey]: "",
-    });
+  function removeRow(id: number) {
+    const nextRows = rows.filter((r) => r.id !== id);
+    setRows(nextRows);
+    syncToParent(nextRows);
   }
 
   return (
@@ -592,9 +674,9 @@ function UserVariablesEditor({
     >
       <strong style={{ fontSize: 13 }}>User Variables (optional)</strong>
 
-      {entries.map(([k, v], i) => (
+      {rows.map((row) => (
         <div
-          key={k || i}
+          key={row.id}
           style={{
             display: "flex",
             gap: 6,
@@ -603,8 +685,8 @@ function UserVariablesEditor({
         >
           <input
             placeholder="key"
-            value={k}
-            onChange={(e) => setEntry(i, e.target.value, v)}
+            value={row.key}
+            onChange={(e) => handleKeyChange(row.id, e.target.value)}
             style={{
               padding: 5,
               borderRadius: 8,
@@ -614,8 +696,8 @@ function UserVariablesEditor({
           />
           <input
             placeholder="value"
-            value={v}
-            onChange={(e) => setEntry(i, k, e.target.value)}
+            value={row.value}
+            onChange={(e) => handleValueChange(row.id, e.target.value)}
             style={{
               padding: 5,
               borderRadius: 8,
@@ -625,7 +707,7 @@ function UserVariablesEditor({
           />
           <button
             type="button"
-            onClick={() => remove(i)}
+            onClick={() => removeRow(row.id)}
             style={{
               border: "none",
               background: "transparent",
@@ -642,7 +724,7 @@ function UserVariablesEditor({
       <div style={{ marginTop: 8 }}>
         <button
           type="button"
-          onClick={add}
+          onClick={addRow}
           style={{
             padding: "4px 10px",
             borderRadius: 999,
