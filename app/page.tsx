@@ -30,7 +30,7 @@ type CompositeObjective = {
 const defaultComposite: CompositeObjective = {
   name: "Telecom Support – Vague Extra Charge Question",
   description:
-    "Very rough, underspecified objective: customer has noticed an extra charge and asks about it.",
+    "customer has noticed an extra charge and asks about it.",
   domain: "telecom_billing", // example
   persona: "Postpaid telecom customer in Ireland",
   userVariables: {
@@ -41,7 +41,7 @@ const defaultComposite: CompositeObjective = {
   subObjectives: [
     {
       description:
-        'Check how the chatbot handles a vague billing question like "What is this extra charge?" when the customer gives almost no context.',
+        'What is this extra charge?',
       isBlocking: true,
       maxTurnsForObjective: 8,
       turnMatching: {
