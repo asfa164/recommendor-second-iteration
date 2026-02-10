@@ -31,7 +31,7 @@ const defaultComposite: CompositeObjective = {
   name: "Telecom Support – Vague Extra Charge Question",
   description:
     "Very rough, underspecified objective: customer has noticed an extra charge and asks about it.",
-  domain: "telecom_billing", // NEW: example domain
+  domain: "telecom_billing", // example
   persona: "Postpaid telecom customer in Ireland",
   userVariables: {
     account_type: "postpaid",
@@ -360,7 +360,7 @@ export default function Page() {
                 style={{
                   padding: "10px 16px",
                   borderRadius: 999,
-                  border: "1px solid "#ccc",
+                  border: "1px solid #ccc",
                   background: "#fafafa",
                   cursor: "pointer",
                   fontSize: 13,
