@@ -60,7 +60,8 @@ const emptySubObjective = (): SubObjective => ({
 });
 
 export default function Page() {
-  const [mode, setMode] = useState<"json" | "form">("json");
+  const [mode, setMode] = useState<"json" | "form">("form");
+
 
   // Source-of-truth state for form mode
   const [formState, setFormState] = useState<CompositeObjective>(defaultComposite);
