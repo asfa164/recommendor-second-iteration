@@ -25,10 +25,11 @@ type CompositeObjective = {
   subObjectives: SubObjective[];
 };
 
+// ✅ Default is now DELIBERATELY VAGUE
 const defaultComposite: CompositeObjective = {
-  name: "Telecom Support – Vague Billing Dispute (Refined Objective)",
+  name: "Telecom Support – Vague Extra Charge Question",
   description:
-    "Validate that the agent gathers sufficient context for resolving a vague billing dispute and avoids premature assumptions.",
+    "Very rough, underspecified objective: customer has noticed an extra charge and asks about it.",
   persona: "Postpaid telecom customer in Ireland",
   userVariables: {
     account_type: "postpaid",
@@ -38,7 +39,7 @@ const defaultComposite: CompositeObjective = {
   subObjectives: [
     {
       description:
-        "Validate that the agent gathers enough structured context about the bill (date range, amount, payment method) before suggesting any resolution.",
+        'Check how the chatbot handles a vague billing question like "What is this extra charge?" when the customer gives almost no context.',
       isBlocking: true,
       maxTurnsForObjective: 8,
       turnMatching: {
@@ -59,8 +60,23 @@ const emptySubObjective = (): SubObjective => ({
   },
 });
 
+// For pretty text rendering of the model result
+type ObjectiveResult = {
+  originalDescription?: string;
+  primarySuggestion?: string;
+  alternativeSuggestion?: string;
+};
+
+type ModelResult = {
+  error?: string;
+  objectives?: ObjectiveResult[];
+  notes?: string;
+  [key: string]: any;
+};
+
 export default function Page() {
   const [mode, setMode] = useState<"json" | "form">("form");
+  const [outputMode, setOutputMode] = useState<"text" | "json">("text");
 
   // Source-of-truth state for form mode
   const [formState, setFormState] =
@@ -106,6 +122,8 @@ export default function Page() {
       }
 
       setResult(data);
+      // default to text mode when new result arrives
+      setOutputMode("text");
     } catch (err: any) {
       setError(err?.message || "Unknown error");
     } finally {
@@ -351,28 +369,198 @@ export default function Page() {
           </div>
 
           <div>
-            <h2 style={{ fontSize: 16, marginBottom: 8 }}>Model Output</h2>
-            <pre
+            <div
               style={{
-                width: "100%",
-                height: 380,
-                fontFamily: "monospace",
-                fontSize: 13,
-                padding: 12,
-                borderRadius: 10,
-                border: "1px solid #ddd",
-                background: "#fafafa",
-                overflow: "auto",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8,
               }}
             >
-              {result ? JSON.stringify(result, null, 2) : "No result yet."}
-            </pre>
+              <h2 style={{ fontSize: 16 }}>Model Output</h2>
+
+              {/* Output mode toggle: Text / JSON */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  borderRadius: 999,
+                  border: "1px solid #ddd",
+                  overflow: "hidden",
+                  fontSize: 12,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setOutputMode("text")}
+                  disabled={outputMode === "text"}
+                  style={{
+                    padding: "4px 10px",
+                    border: "none",
+                    background:
+                      outputMode === "text" ? "#111" : "transparent",
+                    color: outputMode === "text" ? "#fff" : "#333",
+                    cursor:
+                      outputMode === "text" ? "default" : "pointer",
+                  }}
+                >
+                  Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOutputMode("json")}
+                  disabled={outputMode === "json"}
+                  style={{
+                    padding: "4px 10px",
+                    border: "none",
+                    background:
+                      outputMode === "json" ? "#111" : "transparent",
+                    color: outputMode === "json" ? "#fff" : "#333",
+                    cursor:
+                      outputMode === "json" ? "default" : "pointer",
+                  }}
+                >
+                  JSON
+                </button>
+              </div>
+            </div>
+
+            {outputMode === "json" ? (
+              <pre
+                style={{
+                  width: "100%",
+                  height: 380,
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #ddd",
+                  background: "#fafafa",
+                  overflow: "auto",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {result
+                  ? JSON.stringify(result, null, 2)
+                  : "No result yet."}
+              </pre>
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: 380,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #ddd",
+                  background: "#fafafa",
+                  overflow: "auto",
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                }}
+              >
+                <TextResultView result={result} />
+              </div>
+            )}
           </div>
         </section>
       </div>
     </main>
+  );
+}
+
+function TextResultView({ result }: { result: unknown }) {
+  if (!result) {
+    return <p style={{ color: "#666" }}>No result yet.</p>;
+  }
+
+  const r = result as ModelResult;
+
+  if (r.error) {
+    return (
+      <p style={{ color: "crimson" }}>
+        Error from model: <strong>{r.error}</strong>
+      </p>
+    );
+  }
+
+  const objectives = Array.isArray(r.objectives) ? r.objectives : [];
+
+  if (!objectives.length && !r.notes) {
+    return (
+      <div>
+        <p style={{ color: "#666" }}>
+          Model returned an unexpected structure. Switch to JSON view to
+          inspect the raw response.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {objectives.map((obj, idx) => (
+        <div
+          key={idx}
+          style={{
+            padding: 8,
+            borderRadius: 8,
+            background: "#fff",
+            border: "1px solid #e3e3e3",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              marginBottom: 4,
+              color: "#333",
+            }}
+          >
+            Objective {idx + 1}
+          </div>
+          {obj.originalDescription && (
+            <p style={{ margin: 0, fontSize: 12, color: "#555" }}>
+              <strong>Original:</strong> {obj.originalDescription}
+            </p>
+          )}
+          {obj.primarySuggestion && (
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#111" }}>
+              <strong>Primary suggestion:</strong>{" "}
+              {obj.primarySuggestion}
+            </p>
+          )}
+          {obj.alternativeSuggestion && (
+            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#333" }}>
+              <strong>Alternative suggestion:</strong>{" "}
+              {obj.alternativeSuggestion}
+            </p>
+          )}
+        </div>
+      ))}
+
+      {r.notes && (
+        <div
+          style={{
+            padding: 8,
+            borderRadius: 8,
+            background: "#fff",
+            border: "1px solid #e3e3e3",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              marginBottom: 4,
+              color: "#333",
+            }}
+          >
+            Notes
+          </div>
+          <p style={{ margin: 0, fontSize: 12, color: "#333" }}>{r.notes}</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -654,7 +842,7 @@ function UserVariablesEditor({
     };
     const nextRows = [...rows, newRow];
     setRows(nextRows);
-    // No immediate sync – empty key means nothing to send yet
+    // Empty key -> nothing to sync yet
   }
 
   function removeRow(id: number) {
