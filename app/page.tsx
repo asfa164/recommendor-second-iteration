@@ -20,18 +20,17 @@ type SubObjective = {
 type CompositeObjective = {
   name?: string;
   description?: string;
-  domain?: string; // NEW: domain field (optional)
+  domain?: string;
   persona: string;
   userVariables?: Record<string, string>;
   subObjectives: SubObjective[];
 };
 
-// ✅ Default is now DELIBERATELY VAGUE
+// ✅ Default is now DELIBERATELY VAGUE but with instructions + satisfaction criteria
 const defaultComposite: CompositeObjective = {
   name: "Telecom Support – Vague Extra Charge Question",
-  description:
-    "customer has noticed an extra charge and asks about it.",
-  domain: "telecom_billing", // example
+  description: "customer has noticed an extra charge and asks about it.",
+  domain: "telecom_billing",
   persona: "Postpaid telecom customer in Ireland",
   userVariables: {
     account_type: "postpaid",
@@ -40,9 +39,15 @@ const defaultComposite: CompositeObjective = {
   },
   subObjectives: [
     {
-      description:
-        'What is this extra charge?',
+      description: "What is this extra charge?",
       isBlocking: true,
+      instructions:
+        'Treat this as a vague billing query. The customer only says "What is this extra charge?" with no further context. Focus on how the agent elicits the right information before promising a resolution.',
+      satisfactionCriteria: [
+        "Agent acknowledges the concern about the extra charge.",
+        "Agent asks for at least one specific piece of information to identify the charge (e.g. date, amount, invoice ID, last 4 digits of card).",
+        "Agent avoids confirming the cause of the charge before seeing the relevant bill details.",
+      ],
       maxTurnsForObjective: 8,
       turnMatching: {
         scope: "any",
@@ -84,7 +89,7 @@ type ModelResult = {
   error?: string;
   objectives?: ObjectiveResult[]; // v1
   notes?: string;
-  subObjectives?: SubObjectiveResult[]; // v2 (your current JSON)
+  subObjectives?: SubObjectiveResult[]; // v2
   [key: string]: any;
 };
 
@@ -136,7 +141,6 @@ export default function Page() {
       }
 
       setResult(data);
-      // default to text mode when new result arrives
       setOutputMode("text");
     } catch (err: any) {
       setError(err?.message || "Unknown error");
@@ -318,14 +322,15 @@ export default function Page() {
                   }}
                 >
 {`{
-  "description": "string",           // Required: What should be achieved
-  "isBlocking": boolean,             // Optional: If true, failure stops the test (default: false)
-  "instructions": "string",          // Optional: Special instructions for evaluation
-  "maxTurnsForObjective": number,    // Optional: Maximum turns for a sub objective (default: 12) 
-  "turnMatching": {                  // Optional: Configure flexible turn-based objective matching
-    "scope": "any | recent | current",              // Default: "any"
+  "description": "string",                 // Required: What should be achieved
+  "isBlocking": boolean,                   // Optional: If true, failure stops the test (default: false)
+  "instructions": "string",                // Optional: Special instructions for evaluation
+  "satisfactionCriteria": ["string"],      // Optional: List of concrete pass conditions
+  "maxTurnsForObjective": number,          // Optional: Maximum turns for a sub objective (default: 12) 
+  "turnMatching": {                        // Optional: Configure flexible turn-based objective matching
+    "scope": "any | recent | current",     // Default: "any"
     "evaluationStrategy": "first_match | best_match | latest_match",  // Default: "first_match"
-    "recentTurnCount": number        // Required when scope='recent'
+    "recentTurnCount": number              // Required when scope='recent'
   }
 }`}
                 </pre>
@@ -498,10 +503,7 @@ function TextResultView({ result }: { result: unknown }) {
     );
   }
 
-  // v1 format: { objectives: [...] }
   const v1Objectives = Array.isArray(r.objectives) ? r.objectives : [];
-
-  // v2 format: { subObjectives: [ { index, currentDefiningObjective, recommendation: {...} } ] }
   const v2SubObjectives = Array.isArray(r.subObjectives) ? r.subObjectives : [];
 
   const hasV1 = v1Objectives.length > 0;
@@ -824,6 +826,13 @@ function FormEditor({
               />
             </label>
 
+            <SatisfactionCriteriaEditor
+              value={sub.satisfactionCriteria}
+              onChange={(list) =>
+                updateSub(i, { satisfactionCriteria: list })
+              }
+            />
+
             <label>
               <span style={{ fontSize: 13 }}>Max turns (default 12)</span>
               <input
@@ -886,7 +895,6 @@ function UserVariablesEditor({
 }) {
   const [rows, setRows] = useState<UserVarRow[]>([]);
 
-  // Initialise / sync rows from parent value
   useEffect(() => {
     const entries = Object.entries(value);
     if (entries.length === 0) {
@@ -936,7 +944,6 @@ function UserVariablesEditor({
     };
     const nextRows = [...rows, newRow];
     setRows(nextRows);
-    // Empty key -> nothing to sync yet
   }
 
   function removeRow(id: number) {
@@ -1017,6 +1024,122 @@ function UserVariablesEditor({
           }}
         >
           + Add variable
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * SatisfactionCriteriaEditor – simple list of strings per sub-objective
+ */
+function SatisfactionCriteriaEditor({
+  value,
+  onChange,
+}: {
+  value?: string[];
+  onChange: (v?: string[]) => void;
+}) {
+  const criteria = value ?? [];
+
+  function sync(next: string[]) {
+    const trimmed = next.map((c) => c.trim());
+    const allEmpty = trimmed.every((c) => !c);
+    if (allEmpty) {
+      onChange(undefined);
+    } else {
+      onChange(next);
+    }
+  }
+
+  function updateItem(index: number, text: string) {
+    const next = [...criteria];
+    next[index] = text;
+    sync(next);
+  }
+
+  function addItem() {
+    const next = [...criteria, ""];
+    sync(next);
+  }
+
+  function removeItem(index: number) {
+    const next = criteria.filter((_, i) => i !== index);
+    sync(next);
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        padding: 8,
+        borderRadius: 8,
+        border: "1px dashed #ddd",
+        background: "#fff",
+      }}
+    >
+      <strong style={{ fontSize: 13 }}>Satisfaction criteria (optional)</strong>
+      <p
+        style={{
+          margin: "4px 0 6px",
+          fontSize: 11,
+          color: "#777",
+        }}
+      >
+        Define concrete pass conditions for this sub-objective (one per line).
+      </p>
+
+      {criteria.map((c, idx) => (
+        <div
+          key={idx}
+          style={{
+            display: "flex",
+            gap: 6,
+            marginTop: 4,
+          }}
+        >
+          <input
+            value={c}
+            placeholder={`Criterion ${idx + 1}`}
+            onChange={(e) => updateItem(idx, e.target.value)}
+            style={{
+              flex: 1,
+              padding: 5,
+              borderRadius: 8,
+              border: "1px solid #ddd",
+              fontSize: 12,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => removeItem(idx)}
+            style={{
+              border: "none",
+              background: "transparent",
+              color: "#c00",
+              cursor: "pointer",
+              fontSize: 12,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+
+      <div style={{ marginTop: 6 }}>
+        <button
+          type="button"
+          onClick={addItem}
+          style={{
+            padding: "4px 10px",
+            borderRadius: 999,
+            border: "1px dashed #bbb",
+            background: "#fafafa",
+            cursor: "pointer",
+            fontSize: 12,
+          }}
+        >
+          + Add criterion
         </button>
       </div>
     </div>
